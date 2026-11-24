@@ -1,0 +1,6 @@
+backend/assets.db
+backend/assets.db-wal
+backend/assets.db-shm
+
+backend/uploads/*
+.env
