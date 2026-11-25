@@ -1,4 +1,6 @@
 import db from "../utils/db.js";
+import path from 'path'
+import fs from "fs";
 
 // ____________________add assets____________________________
 export const createAsset = async (req, res) => {
@@ -49,12 +51,20 @@ export const updateAsset = (req, res) => {
                 message: "Asset not found"
             });
         }
-        if (!asset_id || !asset_name || !category) {
+         if (
+            asset_id === undefined &&
+            asset_name === undefined &&
+            category === undefined &&
+            !req.file
+        ) {
             return res.status(400).json({
-                message: "All fields are required"
+                message: "Feild Requried"
             });
         }
 
+        const newAssetId = asset_id ?? asset.asset_id;
+        const newAssetName = asset_name ?? asset.asset_name;
+        const newCategory = category ?? asset.category;
         const photograph = req.file ? req.file.filename : asset.photograph;
 
         const query = db.prepare(`
@@ -67,9 +77,9 @@ export const updateAsset = (req, res) => {
         `);
 
         query.run(
-            asset_id,
-            asset_name,
-            category,
+            newAssetId,
+            newAssetName,
+            newCategory,
             photograph,
             id
         );
@@ -120,7 +130,7 @@ export const updateAsset = (req, res) => {
 
 export const deleteAsset = (req, res) => {
     try {
-        const { id } = req.params;
+        const { asset_id } = req.params;
         const asset = db.prepare( "SELECT * FROM assets WHERE id = ?").get(id);
         if (!asset) {
             return res.status(404).json({
@@ -147,4 +157,97 @@ export const deleteAsset = (req, res) => {
             message: "Internal Server Error"
         });
     }
+};
+
+
+
+export const getAllAssets = (req, res) => {
+    try {
+        const assets = db.prepare(`
+            SELECT * FROM assets
+            ORDER BY created_at DESC
+        `).all();
+
+        return res.status(200).json({
+            success: true,
+            total: assets.length,
+            assets
+        });
+
+    } catch (error) {
+        console.log(error);
+
+        return res.status(500).json({
+            message: "Internal Server Error"
+        });
+    }
+};
+
+
+
+
+export const getSingleAsset = (req, res) => {
+    try {
+        const { asset_id } = req.params;
+
+        const asset = db.prepare(`
+            SELECT * FROM assets WHERE asset_id = ?
+        `).get(asset_id);
+
+        if (!asset) {
+            return res.status(404).json({
+                message: "Asset not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            asset
+        });
+
+    } catch (error) {
+        console.log(error);
+
+        return res.status(500).json({
+            message: "Internal Server Error"
+        });
+    }
+};
+
+
+
+
+
+
+// ____________________ SEARCH ASSET ____________________
+
+export const searchAsset = (req, res) => {
+    try {
+        const { asset_id } = req.query;
+
+        if (!asset_id) {
+            return res.status(400).json({
+                message: "Asset ID is required"
+            });
+        }
+
+        const assets = db.prepare(`
+            SELECT * FROM assets
+            WHERE asset_id LIKE ?
+            ORDER BY created_at DESC
+        `).all(`%${asset_id}%`);
+
+        return res.status(200).json({
+            success: true,
+            total: assets.length,
+            assets
+        });
+
+    } catch (error) {
+        console.log(error);
+
+        return res.status(500).json({
+            message: "Internal Server Error"
+        });
+    }   
 };
